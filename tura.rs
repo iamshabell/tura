@@ -1,6 +1,6 @@
+use std::fmt::Write;
 use std::fs;
 use std::result;
-use std::fmt::Write;
 
 type Result<T> = result::Result<T, ()>;
 #[derive(Debug)]
@@ -41,7 +41,7 @@ impl<'a> Machine<'a> {
                     Step::Left => {
                         if self.head == 0 {
                             eprintln!("ERROR: head moved out of bounds");
-                             return Err(());
+                            return Err(());
                         }
 
                         self.head -= 1;
@@ -51,8 +51,8 @@ impl<'a> Machine<'a> {
                     }
                 }
                 self.state.name = rule.next.name;
-                 self.halt = false;
-                 break;
+                self.halt = false;
+                break;
             }
         }
         Ok(())
@@ -105,39 +105,52 @@ fn parse_rule<'a>(lexer: &mut impl Iterator<Item = &'a str>) -> Result<Rule<'a>>
     let step = parse_step(lexer)?;
     let next = parse_symbol(lexer)?;
 
-    Ok(Rule { state, read, write, next, step })
+    Ok(Rule {
+        state,
+        read,
+        write,
+        next,
+        step,
+    })
+}
+
+fn parse_rules<'a>(lexer: &mut impl Iterator<Item = &'a str>) -> Result<Vec<Rule<'a>>> {
+    let mut rules = Vec::new();
+    while lexer.peek().is_some() {
+        rules.push(parse_rule(lexer)?);
     }
+    Ok(rules)
+}
 
 fn main() -> Result<()> {
-   let source_path = "./inc.tura";
-   let source = fs::read_to_string(source_path).map_err(|err| {
-       eprintln!("ERROR: could not read file {source_path}: {err}");
-   })?;
+    let source_path = "./inc.tura";
+    let source = fs::read_to_string(source_path).map_err(|err| {
+        eprintln!("ERROR: could not read file {source_path}: {err}");
+    })?;
 
-   let mut lexer = source.split(&[' ', '\n']).filter(|token| token.len() > 0).peekable();
-   let mut rules = Vec::new();
-   while lexer.peek().is_some() {
-       rules.push(parse_rule(&mut lexer)?);
-   }
+    let mut lexer = source
+        .split(&[' ', '\n'])
+        .filter(|token| token.len() > 0)
+        .peekable();
+    let rules = parse_rules(&mut lexer)?;
 
-   let mut machine = Machine {
-       state: Symbol { name: "Inc" },
-       tape: vec![
-           Symbol { name: "1" },
-           Symbol { name: "1" },
-           Symbol { name: "0" },
-           Symbol { name: "1" },
-       ],
-       head: 0,
-       halt: false,
-   };
+    let mut machine = Machine {
+        state: Symbol { name: "Inc" },
+        tape: vec![
+            Symbol { name: "1" },
+            Symbol { name: "1" },
+            Symbol { name: "0" },
+            Symbol { name: "1" },
+        ],
+        head: 0,
+        halt: false,
+    };
 
+    while !machine.halt {
+        machine.print();
+        machine.halt = true;
+        machine.next(&rules)?;
+    }
 
-   while !machine.halt {
-       machine.print();
-       machine.halt = true;
-       machine.next(&rules)?;
-   }
-
-   Ok(())
+    Ok(())
 }
