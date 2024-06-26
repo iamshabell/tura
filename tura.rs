@@ -118,44 +118,68 @@ fn parse_rule<'a>(lexer: &mut impl Iterator<Item = &'a str>) -> Result<Rule<'a>>
 }
 
 fn parse_rules<'a>(lexer: &mut Peekable<impl Iterator<Item = &'a str>>) -> Result<Vec<Rule<'a>>> {
-    let mut rules = Vec::new();
+    let mut rules = vec![];
     while lexer.peek().is_some() {
         rules.push(parse_rule(lexer)?);
     }
     Ok(rules)
 }
 
+fn parse_tape<'a>(lexer: &mut Peekable<impl Iterator<Item = &'a str>>) -> Result<Vec<Symbol<'a>>> {
+    let mut symbols = vec![];
+    while lexer.peek().is_some() {
+        symbols.push(parse_symbol(lexer)?);
+    }
+    Ok(symbols)
+}
+
 fn start() -> Result<()> {
     let mut args = env::args();
     let program = args.next().expect("ERROR: could not get program name");
 
-    let source_path;
+    let tura_path;
     if let Some(path) = args.next() {
-        source_path = path;
+        tura_path = path;
     } else {
         eprintln!("Usage: {program} <source.tura>");
         eprintln!("ERROR: expected source file");
         return Err(());
     }
 
-    let source = fs::read_to_string(&source_path).map_err(|err| {
-        eprintln!("ERROR: could not read file {source_path}: {err}");
+    let tape_path;
+    if let Some(path) = args.next() {
+        tape_path = path;
+    } else {
+        eprintln!("Usage: {program} <input.tape>");
+        eprintln!("ERROR: expected tape file");
+        return Err(());
+    }
+
+    let tura_source = fs::read_to_string(&tura_path).map_err(|err| {
+        eprintln!("ERROR: could not read file {tura_path}: {err}");
     })?;
 
-    let mut lexer = source
-        .split(&[' ', '\n'])
-        .filter(|token| token.len() > 0)
-        .peekable();
-    let rules = parse_rules(&mut lexer)?;
+    let rules = parse_rules(
+        &mut tura_source
+            .split(&[' ', '\n'])
+            .filter(|token| token.len() > 0)
+            .peekable(),
+    )?;
+
+    let tape_source = fs::read_to_string(&tape_path).map_err(|err| {
+        eprintln!("ERROR: could not read file {tape_path}: {err}");
+    })?;
+
+    let tape = parse_tape(
+        &mut tape_source
+            .split(&[' ', '\n'])
+            .filter(|token| token.len() > 0)
+            .peekable(),
+    )?;
 
     let mut machine = Machine {
         state: Symbol { name: "Inc" },
-        tape: vec![
-            Symbol { name: "1" },
-            Symbol { name: "1" },
-            Symbol { name: "0" },
-            Symbol { name: "1" },
-        ],
+        tape,
         head: 0,
         halt: false,
     };
