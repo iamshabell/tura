@@ -1,5 +1,8 @@
+use std::env;
 use std::fmt::Write;
 use std::fs;
+use std::iter::Peekable;
+use std::process::ExitCode;
 use std::result;
 
 type Result<T> = result::Result<T, ()>;
@@ -114,7 +117,7 @@ fn parse_rule<'a>(lexer: &mut impl Iterator<Item = &'a str>) -> Result<Rule<'a>>
     })
 }
 
-fn parse_rules<'a>(lexer: &mut impl Iterator<Item = &'a str>) -> Result<Vec<Rule<'a>>> {
+fn parse_rules<'a>(lexer: &mut Peekable<impl Iterator<Item = &'a str>>) -> Result<Vec<Rule<'a>>> {
     let mut rules = Vec::new();
     while lexer.peek().is_some() {
         rules.push(parse_rule(lexer)?);
@@ -122,9 +125,20 @@ fn parse_rules<'a>(lexer: &mut impl Iterator<Item = &'a str>) -> Result<Vec<Rule
     Ok(rules)
 }
 
-fn main() -> Result<()> {
-    let source_path = "./inc.tura";
-    let source = fs::read_to_string(source_path).map_err(|err| {
+fn start() -> Result<()> {
+    let mut args = env::args();
+    let program = args.next().expect("ERROR: could not get program name");
+
+    let source_path;
+    if let Some(path) = args.next() {
+        source_path = path;
+    } else {
+        eprintln!("Usage: {program} <source.tura>");
+        eprintln!("ERROR: expected source file");
+        return Err(());
+    }
+
+    let source = fs::read_to_string(&source_path).map_err(|err| {
         eprintln!("ERROR: could not read file {source_path}: {err}");
     })?;
 
@@ -153,4 +167,11 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn main() -> ExitCode {
+    match start() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(()) => ExitCode::FAILURE,
+    }
 }
