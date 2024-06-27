@@ -12,7 +12,7 @@ enum Step {
     Right,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 struct Symbol<'a> {
     name: &'a str,
 }
@@ -30,6 +30,7 @@ struct Rule<'a> {
 struct Machine<'a> {
     state: Symbol<'a>,
     tape: Vec<Symbol<'a>>,
+    tape_default: Symbol<'a>,
     head: usize,
     halt: bool,
 }
@@ -51,6 +52,9 @@ impl<'a> Machine<'a> {
                     }
                     Step::Right => {
                         self.head += 1;
+                        if self.head >= self.tape.len() {
+                            self.tape.push(self.tape_default.clone());
+                        }
                     }
                 }
                 self.state.name = rule.next.name;
@@ -177,9 +181,18 @@ fn start() -> Result<()> {
             .peekable(),
     )?;
 
+    let tape_default;
+    if let Some(symbol) = tape.last().cloned() {
+        tape_default = symbol;
+    } else {
+        eprintln!("ERROR: tape is empty");
+        return Err(());
+    }
+
     let mut machine = Machine {
         state: Symbol { name: "Inc" },
         tape,
+        tape_default,
         head: 0,
         halt: false,
     };
