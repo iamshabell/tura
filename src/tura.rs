@@ -154,7 +154,7 @@ fn start() -> Result<()> {
     if let Some(path) = args.next() {
         tape_path = path;
     } else {
-        eprintln!("Usage: {program} <input.tape>");
+        eprintln!("Usage: {program} {tura_path} <input.tape>");
         eprintln!("ERROR: expected tape file");
         return Err(());
     }
